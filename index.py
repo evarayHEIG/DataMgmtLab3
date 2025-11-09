@@ -42,6 +42,18 @@ class GenerateTrainNetwork:
                 prop
             )
 
+    def create_cost_property(self):
+        with self.driver.session() as session:
+            session.execute_write(
+                self._create_cost_property
+            )
+
+    def create_graph_projection_min_span_tree(self):
+        with self.driver.session() as session:
+            session.execute_write(
+                self._create_graph_projection_min_span_tree
+            )
+
     @staticmethod
     def _create_city(tx, name, latitude, longitude, population):
         query = (
@@ -88,10 +100,42 @@ class GenerateTrainNetwork:
         )
         tx.run(query, graph_name=graph_name)
 
+    @staticmethod
+    def _create_cost_property(tx):
+        query = (
+            """
+            MATCH ()-[l:Line]->()
+            SET l.cost = l.km * l.nbTracks
+            RETURN count(l) AS numberOfLinesUpdated
+            """
+        )
+
+        result = tx.run(query)
+        number_of_lines_updated = result.single()['numberOfLinesUpdated']
+        print("Updated cost property for {} lines".format(number_of_lines_updated))
+
+    @staticmethod
+    def _create_graph_projection_min_span_tree(tx):
+        query = (
+            """
+            MATCH (source:City)-[r:Line]->(target:City)
+            RETURN gds.graph.project(
+                'trainNetworkGraphMinSpanTree',
+                source,
+                target,
+                { relationshipProperties: r {.cost} },
+                { undirectedRelationshipTypes: ['*'] }
+            )
+            """
+        )
+
+        tx.run(query)        
+
 if __name__ == "__main__":
     generate_train_network = GenerateTrainNetwork("neo4j://localhost:7687")
-    #generate_train_network.create_cities()
-    #generate_train_network.create_lines()
+    generate_train_network.create_cities()
+    generate_train_network.create_lines()
     generate_train_network.create_graph_projection("trainNetworkGraphTime", "time")
     generate_train_network.create_graph_projection("trainNetworkGraphDistance", "km")
-
+    generate_train_network.create_cost_property()
+    generate_train_network.create_graph_projection_min_span_tree()

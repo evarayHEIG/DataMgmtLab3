@@ -61,6 +61,14 @@ class DisplayTrainNetwork:
             session.execute_read(self._shortest_path, map_4, graph_name, prop)
         map_4.save('out/2_3_{}.html'.format(file_suffix))
 
+    def display_minimum_spanning_tree(self):
+        map_5 = folium.Map(location=center_switzerland, zoom_start=8)
+        with self.driver.session() as session:
+            session.execute_read(self._display_cities, map_5)
+            session.execute_read(self._display_lines, map_5)
+            session.execute_read(self._minimum_spanning_tree, map_5)
+        map_5.save('out/2_4.html')
+
     @staticmethod
     def _display_cities(tx, m):
         query = (
@@ -146,6 +154,34 @@ class DisplayTrainNetwork:
                 color="#ff0000"
             )
 
+    @staticmethod
+    def _minimum_spanning_tree(tx, m):
+        query = (
+            """
+            MATCH (c:City{name: 'Chiasso'})
+            CALL gds.spanningTree.stream('trainNetworkGraphMinSpanTree', {
+            sourceNode: c,
+            relationshipWeightProperty: 'cost'
+            })
+            YIELD nodeId,parentId, weight
+            RETURN gds.util.asNode(nodeId) AS node, gds.util.asNode(parentId) AS parent, weight
+            ORDER BY node
+            """
+        )
+        result = tx.run(query)
+        # display the minimum spanning tree on the map
+        for record in result:
+            display_polyline_on_map(
+                m=m,
+                locations=[
+                    (record['node']['latitude'], record['node']['longitude']),
+                    (record['parent']['latitude'], record['parent']['longitude'])
+                ],
+                color="#ff0000"
+            )
+
+
+
 if __name__ == "__main__":
     display_train_network = DisplayTrainNetwork("neo4j://localhost:7687")
     center_switzerland = [46.800663464, 8.222665776]
@@ -154,4 +190,5 @@ if __name__ == "__main__":
     display_train_network.display_query_on_cities()
     display_train_network.display_shortest_path("trainNetworkGraphTime", "time", "2")
     display_train_network.display_shortest_path("trainNetworkGraphDistance", "km", "1")
+    display_train_network.display_minimum_spanning_tree()
 
