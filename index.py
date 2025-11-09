@@ -53,8 +53,8 @@ class GenerateTrainNetwork:
             """
             MATCH (c1:City { name: $city1})
             MATCH (c2:City { name: $city2 })
-            CREATE (c1)-[l1:LINE { km: $km, time: $time, nbTracks: $nbTracks }]->(c2)
-            CREATE (c2)-[l2:LINE { km: $km, time: $time, nbTracks: $nbTracks }]->(c1)
+            CREATE (c1)-[l1:Line { km: $km, time: $time, nbTracks: $nbTracks }]->(c2)
+            CREATE (c2)-[l2:Line { km: $km, time: $time, nbTracks: $nbTracks }]->(c1)
             RETURN l1, l2
             """
         )
@@ -65,6 +65,6 @@ class GenerateTrainNetwork:
 
 if __name__ == "__main__":
     generate_train_network = GenerateTrainNetwork("neo4j://localhost:7687")
-    #generate_train_network.create_cities()
+    generate_train_network.create_cities()
     generate_train_network.create_lines()
 

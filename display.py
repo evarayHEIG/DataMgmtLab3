@@ -45,6 +45,14 @@ class DisplayTrainNetwork:
             session.execute_read(self._display_lines, map_2)
         map_2.save('out/2_1.html')
 
+    def display_query_on_cities(self):
+        map_3 = folium.Map(location=center_switzerland, zoom_start=8)
+        with self.driver.session() as session:
+            session.execute_read(self._display_cities, map_3)
+            session.execute_read(self._display_lines, map_3)
+            session.execute_read(self._query_on_cities, map_3)
+        map_3.save('out/2_2.html')
+
     @staticmethod
     def _display_cities(tx, m):
         query = (
@@ -67,7 +75,7 @@ class DisplayTrainNetwork:
         # We retrieve all lines between cities, using a single direction to avoid duplicates
         query = (
             """
-            MATCH (c1:City)-[l:LINE]->(c2:City)
+            MATCH (c1:City)-[l:Line]->(c2:City)
             RETURN c1, c2, l
             """
         )
@@ -82,9 +90,30 @@ class DisplayTrainNetwork:
                 popup="{} km, {} min".format(record['l']['km'], record['l']['time'])
             )
 
+    @staticmethod
+    def _query_on_cities(tx, m):
+        query = (
+            """
+                match (c2:City{name:"Luzern"})-[l:Line*..4]->(c1:City) 
+                where c1.population > 100000 and c1.name <> c2.name
+                return distinct c1
+            """
+        )
+        result = tx.run(query)
+        for record in result:
+            display_city_on_map(
+                m=m,
+                popup=record['c1']['name'],
+                latitude=record['c1']['latitude'],
+                longitude=record['c1']['longitude'],
+                radius=2000, 
+                color="#ff0000"
+            )
+
 if __name__ == "__main__":
     display_train_network = DisplayTrainNetwork("neo4j://localhost:7687")
     center_switzerland = [46.800663464, 8.222665776]
     display_train_network.display_cities()
     display_train_network.display_lines()
+    display_train_network.display_query_on_cities()
 
