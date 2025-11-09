@@ -33,6 +33,14 @@ class GenerateTrainNetwork:
                     row['time'],
                     row['nbTracks']
                 )
+    
+    def create_graph_projection(self, graph_name, prop):
+        with self.driver.session() as session:
+            session.execute_write(
+                self._create_graph_projection,
+                graph_name,
+                prop
+            )
 
     @staticmethod
     def _create_city(tx, name, latitude, longitude, population):
@@ -63,8 +71,27 @@ class GenerateTrainNetwork:
         line_created = result.single()['l1']
         print("Created Line between: {city1} and {city2} that is {km}km long".format(city1=city1, city2=city2, km=line_created['km']))
 
+    @staticmethod
+    def _create_graph_projection(tx, graph_name, prop):
+        query = (
+            """
+            MATCH (source:City)-[r:Line]->(target:City)
+            RETURN gds.graph.project(
+                $graph_name,
+                source,
+                target,
+                {
+                    relationshipProperties: r {.%s}
+                }
+            )
+            """ % prop
+        )
+        tx.run(query, graph_name=graph_name)
+
 if __name__ == "__main__":
     generate_train_network = GenerateTrainNetwork("neo4j://localhost:7687")
-    generate_train_network.create_cities()
-    generate_train_network.create_lines()
+    #generate_train_network.create_cities()
+    #generate_train_network.create_lines()
+    generate_train_network.create_graph_projection("trainNetworkGraphTime", "time")
+    generate_train_network.create_graph_projection("trainNetworkGraphDistance", "km")
 

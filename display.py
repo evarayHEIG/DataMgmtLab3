@@ -53,6 +53,14 @@ class DisplayTrainNetwork:
             session.execute_read(self._query_on_cities, map_3)
         map_3.save('out/2_2.html')
 
+    def display_shortest_path(self, graph_name, prop, file_suffix):
+        map_4 = folium.Map(location=center_switzerland, zoom_start=8)
+        with self.driver.session() as session:
+            session.execute_read(self._display_cities, map_4)
+            session.execute_read(self._display_lines, map_4)
+            session.execute_read(self._shortest_path, map_4, graph_name, prop)
+        map_4.save('out/2_3_{}.html'.format(file_suffix))
+
     @staticmethod
     def _display_cities(tx, m):
         query = (
@@ -110,10 +118,40 @@ class DisplayTrainNetwork:
                 color="#ff0000"
             )
 
+    @staticmethod
+    def _shortest_path(tx, m, graph_name, prop):
+        query = (
+            """
+                MATCH (source:City {name: 'Geneve'}), (target:City {name: 'Chur'})
+                CALL gds.shortestPath.dijkstra.stream($graph_name, {
+                    sourceNode: source,
+                    targetNodes: target,
+                    relationshipWeightProperty: $prop
+                })
+                YIELD index, path
+                RETURN nodes(path) as path
+                ORDER BY index
+            """
+        )
+        result = tx.run(query, graph_name=graph_name, prop=prop)
+        for record in result:
+            path = record['path']
+            locations = []
+            for node in path:
+                locations.append((node['latitude'], node['longitude']))
+            display_polyline_on_map(
+                m=m,
+                locations=locations,
+                popup="Shortest path based on {}".format(prop),
+                color="#ff0000"
+            )
+
 if __name__ == "__main__":
     display_train_network = DisplayTrainNetwork("neo4j://localhost:7687")
     center_switzerland = [46.800663464, 8.222665776]
     display_train_network.display_cities()
     display_train_network.display_lines()
     display_train_network.display_query_on_cities()
+    display_train_network.display_shortest_path("trainNetworkGraphTime", "time", "2")
+    display_train_network.display_shortest_path("trainNetworkGraphDistance", "km", "1")
 
