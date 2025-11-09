@@ -38,6 +38,13 @@ class DisplayTrainNetwork:
             session.execute_read(self._display_cities, map_1)
         map_1.save('out/2_0.html')
 
+    def display_lines(self):
+        map_2 = folium.Map(location=center_switzerland, zoom_start=8)
+        with self.driver.session() as session:
+            session.execute_read(self._display_cities, map_2)
+            session.execute_read(self._display_lines, map_2)
+        map_2.save('out/2_1.html')
+
     @staticmethod
     def _display_cities(tx, m):
         query = (
@@ -55,8 +62,29 @@ class DisplayTrainNetwork:
                 longitude=record['c']['longitude']
             )
 
+    @staticmethod
+    def _display_lines(tx, m):
+        # We retrieve all lines between cities, using a single direction to avoid duplicates
+        query = (
+            """
+            MATCH (c1:City)-[l:LINE]->(c2:City)
+            RETURN c1, c2, l
+            """
+        )
+        result = tx.run(query)
+        for record in result:
+            display_polyline_on_map(
+                m=m,
+                locations=[
+                    (record['c1']['latitude'], record['c1']['longitude']),
+                    (record['c2']['latitude'], record['c2']['longitude'])
+                ],
+                popup="{} km, {} min".format(record['l']['km'], record['l']['time'])
+            )
+
 if __name__ == "__main__":
     display_train_network = DisplayTrainNetwork("neo4j://localhost:7687")
     center_switzerland = [46.800663464, 8.222665776]
     display_train_network.display_cities()
+    display_train_network.display_lines()
 
