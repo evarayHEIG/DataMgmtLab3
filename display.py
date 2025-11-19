@@ -1,6 +1,8 @@
 from neo4j import GraphDatabase
 import folium
 
+# authors: Massimo Stefani, Eva Ray
+
 # display city on the folium map
 def display_city_on_map(m, popup, latitude, longitude, radius=1000, color="#3186cc"):
     folium.Circle(
@@ -177,6 +179,7 @@ class DisplayTrainNetwork:
                     (record['node']['latitude'], record['node']['longitude']),
                     (record['parent']['latitude'], record['parent']['longitude'])
                 ],
+                popup="MST edge with cost {}".format(record['weight']),
                 color="#ff0000"
             )
 

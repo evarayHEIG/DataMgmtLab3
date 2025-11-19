@@ -1,6 +1,8 @@
 from neo4j import GraphDatabase
 import pandas as pd
 
+# authors: Massimo Stefani, Eva Ray
+
 class GenerateTrainNetwork:
 
     def __init__(self, uri):
